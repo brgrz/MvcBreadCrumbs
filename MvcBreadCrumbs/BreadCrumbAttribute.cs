@@ -3,50 +3,50 @@ using System.Web.Mvc;
 
 namespace MvcBreadCrumbs
 {
-   
-    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false)]
-    public class BreadCrumbAttribute : ActionFilterAttribute
-    {
 
-        public bool Clear { get; set; }
+	[AttributeUsage(AttributeTargets.Method | AttributeTargets.Class, AllowMultiple = false)]
+	public class BreadCrumbAttribute : ActionFilterAttribute
+	{
 
-        public string Label { get; set; }
+		public bool Clear { get; set; }
 
-        public Type ResourceType { get; set; }
+		public string Label { get; set; }
 
-        private static IProvideBreadCrumbsSession _SessionProvider { get; set; }
+		public Type ResourceType { get; set; }
 
-        private static IProvideBreadCrumbsSession SessionProvider
-        {
-            get
-            {
-                if (_SessionProvider != null)
-                {
-                    return _SessionProvider;
-                }
-                return new HttpSessionProvider();
-            }
-        }
+		private static IProvideBreadCrumbsSession _SessionProvider { get; set; }
 
-        public override void OnActionExecuting(ActionExecutingContext filterContext)
-        {
+		private static IProvideBreadCrumbsSession SessionProvider
+		{
+			get
+			{
+				if (_SessionProvider != null)
+				{
+					return _SessionProvider;
+				}
+				return new HttpSessionProvider();
+			}
+		}
 
-            if (filterContext.IsChildAction)
-                return;
+		public override void OnActionExecuting(ActionExecutingContext filterContext)
+		{
 
-            if (filterContext.HttpContext.Request.HttpMethod != "GET")
-                return;
+			if (filterContext.IsChildAction)
+				return;
 
-            if (Clear)
-            {
-                StateManager.RemoveState(SessionProvider.SessionId);
-            }
+			if (filterContext.HttpContext.Request.HttpMethod != "GET")
+				return;
 
-            var state = StateManager.GetState(SessionProvider.SessionId);
-            state.Push(filterContext, Label, ResourceType);
+			if (Clear)
+			{
+				StateManager.RemoveState(SessionProvider.SessionId);
+			}
 
-        }
+			var state = StateManager.GetState(SessionProvider.SessionId);
+			state.Push(filterContext, Label, ResourceType);
 
-    }
-    
+		}
+
+	}
+
 }

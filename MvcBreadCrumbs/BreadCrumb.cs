@@ -9,19 +9,34 @@ namespace MvcBreadCrumbs
 {
     public class BreadCrumb
     {
-        private static IProvideBreadCrumbsSession _SessionProvider { get; set; }
+        private static IProvideBreadCrumbsSession _sessionProvider { get; set; }
 
         private static IProvideBreadCrumbsSession SessionProvider
         {
             get
             {
-                if (_SessionProvider != null)
+                if (_sessionProvider != null)
                 {
-                    return _SessionProvider;
+                    return _sessionProvider;
                 }
                 return new HttpSessionProvider();
             }
         }
+
+		private static IHierarchyProvider _hierarchyProvider { get; set; }
+
+		internal static IHierarchyProvider HierarchyProvider
+		{
+			get
+			{
+				if (_hierarchyProvider != null)
+					return _hierarchyProvider;
+
+				return new DefaultHierarchyProvider();
+			}
+		}
+
+
         public static void Add(string url, string label)
         {
             // get a key for the Url.
@@ -30,9 +45,10 @@ namespace MvcBreadCrumbs
                .ToLower()
                .GetHashCode();
 
-            var current = new StateEntry().WithKey(key)
-             .WithUrl(url)
-             .WithLabel(label);
+			var current = new StateEntry().WithKey(key)
+				.WithLevel(HierarchyProvider.GetLevel(url))
+				.WithUrl(url)
+				.WithLabel(label);
 
             StateManager.GetState(SessionProvider.SessionId).Crumbs.Add(current);
         }
@@ -64,11 +80,11 @@ namespace MvcBreadCrumbs
         public static string GetPreviousUrl()
         {
             var previousPage = StateManager.GetState(SessionProvider.SessionId).Crumbs;
-            var updatedList = new List<StateEntry>(previousPage);
+            var updatedList = new SortedSet<StateEntry>(previousPage, new StateEntryComparer());
             updatedList.Reverse();
 
-            if(updatedList.Count>1)
-                return updatedList.Skip(1).First().Url;
+			if (updatedList.Count > 1)
+				return updatedList.Skip(1).First().Url;
 
             return null;
         }
@@ -89,13 +105,13 @@ namespace MvcBreadCrumbs
         public static RedirectResult RedirectToPreviousUrl()
         {
             var previousPage = StateManager.GetState(SessionProvider.SessionId).Crumbs;
-            var updatedList = new List<StateEntry>(previousPage);
-            updatedList.Reverse();
+			var updatedList = new SortedSet<StateEntry>(previousPage, new StateEntryComparer());
+			updatedList.Reverse();
 
             if (updatedList.Count > 1)
             {
-                if (string.IsNullOrEmpty(updatedList.Skip(1).First().Url))
-                    return new RedirectResult(updatedList.Skip(1).First().Url);
+				if (string.IsNullOrEmpty(updatedList.Skip(1).First().Url))
+					return new RedirectResult(updatedList.Skip(1).First().Url);
             }
                 
             return null;
@@ -148,7 +164,7 @@ namespace MvcBreadCrumbs
                 return "<!-- BreadCrumbs stack is empty -->";
 
 			// don't allow blank labels to propagate outside
-			state.Crumbs.ForEach(x => { x.Label = string.IsNullOrWhiteSpace(x.Label) ? x.Action : x.Label; });
+			state.Crumbs.ToList().ForEach(x => { x.Label = string.IsNullOrWhiteSpace(x.Label) ? x.Action : x.Label; });
 
 			return string.Join(" > ",
                 state.Crumbs.Select(x => "<a href=\"" + x.Url + "\">" + x.Label + "</a>").ToArray());

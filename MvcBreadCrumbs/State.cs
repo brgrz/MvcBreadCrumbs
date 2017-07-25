@@ -10,7 +10,7 @@ namespace MvcBreadCrumbs
     public class State
     {
         public string SessionCookie { get; set; }
-        public List<StateEntry> Crumbs { get; set; }
+        public SortedSet<StateEntry> Crumbs { get; set; }
         public StateEntry Current { get; set; }
 
         public void Push(ActionExecutingContext context, string label, Type resourceType )
@@ -20,9 +20,13 @@ namespace MvcBreadCrumbs
                 .ToLower()
                 .GetHashCode();
 
+			// when pushing entries into the list determine their level in hierarchy so that 
+			// deeper links are added to the end of the list
+			int levels = BreadCrumb.HierarchyProvider.GetLevel(context.HttpContext.Request.Url.ToString());
+
             if (Crumbs.Any(x => x.Key == key))
             {
-                var newCrumbs = new List<StateEntry>();
+                var newCrumbs = new SortedSet<StateEntry>(new StateEntryComparer());
                 var remove = false;
                 // We've seen this route before, maybe user clicked on a breadcrumb
                 foreach (var crumb in Crumbs)
@@ -42,6 +46,7 @@ namespace MvcBreadCrumbs
             Current = new StateEntry().WithKey(key)
                 .SetContext(context)
                 .WithUrl(context.HttpContext.Request.Url.ToString())
+				.WithLevel(levels)
                 .WithLabel(ResourceHelper.GetResourceLookup(resourceType, label));
                 
             Crumbs.Add(Current);
@@ -50,7 +55,7 @@ namespace MvcBreadCrumbs
         public State(string cookie)
         {
             SessionCookie = cookie;
-            Crumbs = new List<StateEntry>();
+			Crumbs = new SortedSet<StateEntry>(new StateEntryComparer());
         }
     }
 
@@ -60,6 +65,7 @@ namespace MvcBreadCrumbs
         public string Label { get; set; }
         public int Key { get; set; }
         public string Url { get; set; }
+		public int Level { get; set; }
 
         public StateEntry WithKey(int key)
         {
@@ -78,6 +84,12 @@ namespace MvcBreadCrumbs
             Label = label ?? Label;
             return this;
         }
+
+		public StateEntry WithLevel(int level)
+		{
+			Level = level;
+			return this;
+		}
 
 
         public StateEntry SetContext(ActionExecutingContext context)
@@ -110,4 +122,12 @@ namespace MvcBreadCrumbs
             }
         }
     }
+
+	public class StateEntryComparer : IComparer<StateEntry>
+	{
+		public int Compare(StateEntry x, StateEntry y)
+		{
+			return x.Level.CompareTo(y.Level);
+		}
+	}
 }

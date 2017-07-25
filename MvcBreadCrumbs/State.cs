@@ -127,6 +127,9 @@ namespace MvcBreadCrumbs
 		{
 			get
 			{
+				if (Context == null)
+					return null;
+
 				return (string)Context.RouteData.Values["controller"];
 			}
 		}
@@ -135,6 +138,9 @@ namespace MvcBreadCrumbs
 		{
 			get
 			{
+				if (Context == null)
+					return null;
+
 				return (string)Context.RouteData.Values["action"];
 			}
 		}

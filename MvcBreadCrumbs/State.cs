@@ -10,19 +10,37 @@ namespace MvcBreadCrumbs
 	public class State
 	{
 		public string SessionCookie { get; set; }
-		public SortedSet<StateEntry> Crumbs { get; set; }
-		public StateEntry Current { get; set; }
+		public SortedSet<StateEntry> Crumbs { get; private set; }
+		public StateEntry Current { get; private set; }
+
+		public State(string cookie)
+		{
+			SessionCookie = cookie;
+			Crumbs = new SortedSet<StateEntry>(new StateEntryComparer());
+		}
+
+		public void Push(string url, string label)
+		{
+			Add(url, label);
+		}
 
 		public void Push(ActionExecutingContext context, string label, Type resourceType)
 		{
-			var key =
-				context.HttpContext.Request.Url.LocalPath
-				.ToLower()
-				.GetHashCode();
+			Add(context.HttpContext.Request.Url.ToString(), label, resourceType);
+		}
+
+		public void SetCurrentLabel(string label)
+		{
+			Current.Label = label;
+		}
+
+		private void Add(string url, string label, Type resourceType = null, ActionExecutingContext actionContext = null)
+		{
+			var key = url.ToLowerInvariant().GetHashCode();
 
 			// when pushing entries into the list determine their level in hierarchy so that 
 			// deeper links are added to the end of the list
-			int levels = BreadCrumb.HierarchyProvider.GetLevel(context.HttpContext.Request.Url.ToString());
+			int levels = BreadCrumb.HierarchyProvider.GetLevel(url);
 
 			if (Crumbs.Any(x => x.Key == key))
 			{
@@ -43,19 +61,14 @@ namespace MvcBreadCrumbs
 				Crumbs = newCrumbs;
 			}
 
-			Current = new StateEntry().WithKey(key)
-				.SetContext(context)
-				.WithUrl(context.HttpContext.Request.Url.ToString())
+			Current = new StateEntry()
+				.WithKey(key)
+				.SetContext(actionContext)
+				.WithUrl(url)
 				.WithLevel(levels)
 				.WithLabel(ResourceHelper.GetResourceLookup(resourceType, label));
 
 			Crumbs.Add(Current);
-		}
-
-		public State(string cookie)
-		{
-			SessionCookie = cookie;
-			Crumbs = new SortedSet<StateEntry>(new StateEntryComparer());
 		}
 	}
 
@@ -94,15 +107,19 @@ namespace MvcBreadCrumbs
 
 		public StateEntry SetContext(ActionExecutingContext context)
 		{
-			Context = context;
-			var type = Context.Controller.GetType();
-			var actionName = (string)Context.RouteData.Values["Action"];
-			var labelQuery =
-				from m in type.FindMembers(MemberTypes.Method, BindingFlags.Public | BindingFlags.Instance, (memberInfo, _) => memberInfo.Name == actionName, null)
-				let atts = m.GetCustomAttributes(typeof(DisplayAttribute), false)
-				where atts.Length > 0
-				select ((DisplayAttribute)atts[0]).GetName();
-			Label = labelQuery.FirstOrDefault() ?? (string)context.RouteData.Values["Action"];
+			if (context != null)
+			{
+				Context = context;
+				var type = Context.Controller.GetType();
+				var actionName = (string)Context.RouteData.Values["Action"];
+				var labelQuery =
+					from m in type.FindMembers(MemberTypes.Method, BindingFlags.Public | BindingFlags.Instance, (memberInfo, _) => memberInfo.Name == actionName, null)
+					let atts = m.GetCustomAttributes(typeof(DisplayAttribute), false)
+					where atts.Length > 0
+					select ((DisplayAttribute)atts[0]).GetName();
+				Label = labelQuery.FirstOrDefault() ?? (string)context.RouteData.Values["Action"];
+			}
+
 			return this;
 		}
 

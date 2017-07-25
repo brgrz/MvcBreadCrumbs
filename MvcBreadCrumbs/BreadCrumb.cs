@@ -39,24 +39,14 @@ namespace MvcBreadCrumbs
 
 		public static void Add(string url, string label)
 		{
-			// get a key for the Url.
-			var key =
-			   url
-			   .ToLower()
-			   .GetHashCode();
-
-			var current = new StateEntry().WithKey(key)
-				.WithLevel(HierarchyProvider.GetLevel(url))
-				.WithUrl(url)
-				.WithLabel(label);
-
-			StateManager.GetState(SessionProvider.SessionId).Crumbs.Add(current);
+			var state = StateManager.GetState(SessionProvider.SessionId);
+			state.Push(url, label);
 		}
 
 		public static void SetLabel(string label)
 		{
 			var state = StateManager.GetState(SessionProvider.SessionId);
-			state.Current.Label = label;
+			state.SetCurrentLabel(label);
 		}
 
 		public static void Clear()
@@ -174,9 +164,11 @@ namespace MvcBreadCrumbs
 		private static bool IsCurrentPage(int compareKey)
 		{
 			var key =
-				System.Web.HttpContext.Current.Request.Url.LocalPath
-				.ToLower()
+				System.Web.HttpContext.Current.Request.Url
+				.ToString()
+				.ToLowerInvariant()
 				.GetHashCode();
+
 			return key == compareKey;
 		}
 

@@ -26,7 +26,7 @@ namespace MvcBreadCrumbs
 
 		public void Push(ActionExecutingContext context, string label, Type resourceType)
 		{
-			Add(context.HttpContext.Request.Url.ToString(), label, resourceType, context);
+			Add(context.HttpContext.Request.Url.LocalPath.ToString(), label, resourceType, context);
 		}
 
 		public void SetCurrentLabel(string label)

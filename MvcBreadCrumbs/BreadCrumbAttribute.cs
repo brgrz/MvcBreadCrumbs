@@ -14,6 +14,13 @@ namespace MvcBreadCrumbs
 
 		public Type ResourceType { get; set; }
 
+		/// <summary>
+		/// If set to true, prevents the <see cref="BreadCrumbAttribute"/> at the controller level to process the action.
+		/// Use when you want to add dynamic breadcrumb trails in code 
+		/// but still allows other actions to use the attribute at the controller level.
+		/// </summary>
+		public bool Manual { get; set; }
+
 		private static IProvideBreadCrumbsSession _SessionProvider { get; set; }
 
 		private static IProvideBreadCrumbsSession SessionProvider
@@ -41,6 +48,9 @@ namespace MvcBreadCrumbs
 			{
 				StateManager.RemoveState(SessionProvider.SessionId);
 			}
+
+			if (Manual)
+				return;
 
 			var state = StateManager.GetState(SessionProvider.SessionId);
 			state.Push(filterContext, Label, ResourceType);

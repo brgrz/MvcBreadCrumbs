@@ -124,13 +124,15 @@ namespace MvcBreadCrumbs
             sb.Append("\">");
             state.Crumbs.Select(x => new { Entry = x, IsCurrent = IsCurrentPage(x.Key) }).OrderBy(x => x.IsCurrent).ToList().ForEach(x =>
             {
-                if (x.IsCurrent)
+				string label = string.IsNullOrWhiteSpace(x.Entry.Label) ? x.Entry.Action : x.Entry.Label;
+
+				if (x.IsCurrent)
                 {
-                    sb.Append("<li class='active'>" + x.Entry.Label + "</li>");
+					sb.Append("<li class='active'>" + label + "</li>");
                 }
                 else
                 {
-                    sb.Append("<li><a href=\"" + x.Entry.Url + "\">" + x.Entry.Label + "</a></li>");
+                    sb.Append("<li><a href=\"" + x.Entry.Url + "\">" + label + "</a></li>");
                 }
             });
             sb.Append("</ol>");
@@ -145,7 +147,10 @@ namespace MvcBreadCrumbs
             if (state.Crumbs != null && !state.Crumbs.Any())
                 return "<!-- BreadCrumbs stack is empty -->";
 
-            return string.Join(" > ",
+			// don't allow blank labels to propagate outside
+			state.Crumbs.ForEach(x => { x.Label = string.IsNullOrWhiteSpace(x.Label) ? x.Action : x.Label; });
+
+			return string.Join(" > ",
                 state.Crumbs.Select(x => "<a href=\"" + x.Url + "\">" + x.Label + "</a>").ToArray());
 
         }
